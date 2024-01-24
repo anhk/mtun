@@ -1,6 +1,10 @@
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/anhk/mtun/pkg/log"
+	"github.com/anhk/mtun/pkg/tun"
+	"github.com/spf13/cobra"
+)
 
 type ClientOption struct {
 	Cidr       []string // cidr to claim
@@ -26,7 +30,9 @@ var clientCmd = cobra.Command{
 	Short:   "use client mode",
 	Aliases: []string{"cli", "c"},
 	Run: func(cmd *cobra.Command, args []string) {
-
+		tun := tun.AllocTun()
+		log.Info("Tun: %v", tun.Name)
+		select {}
 	},
 }
 
@@ -39,7 +45,9 @@ var serverCmd = cobra.Command{
 	},
 }
 
-var rootCmd = cobra.Command{}
+var rootCmd = cobra.Command{
+	Short: "Mtun (tunnel) for HomeMesh network",
+}
 
 func main() {
 	clientCmd.PersistentFlags().StringArrayVarP(&clientOpt.Cidr, "cidr", "c", []string{}, "cidr to claim")

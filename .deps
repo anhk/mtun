@@ -1,3 +1,10 @@
 mtun: \
+./pkg/grpc/grpc.go \
+./pkg/tun/tun_darwin.go \
+./pkg/tun/tun.go \
+./pkg/tun/tun_linux.go \
+./pkg/log/log.go \
+./proto/stream_grpc.pb.go \
+./proto/stream.pb.go \
 ./cmd/main.go \
 
