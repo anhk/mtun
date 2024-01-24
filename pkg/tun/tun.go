@@ -8,6 +8,10 @@ import (
 	"github.com/anhk/mtun/pkg/log"
 )
 
+type TunOption struct {
+	Cidr []string // cidr to claim
+}
+
 type Tun struct {
 	filep *os.File
 	Name  string
