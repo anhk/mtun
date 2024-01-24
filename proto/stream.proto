@@ -1,0 +1,19 @@
+syntax = "proto3";
+package stream;
+option go_package = "./proto";
+
+enum Type {
+  Data = 0;     // 数据
+  AddRoute = 1; // 添加路由
+  DelRoute = 2; // 删除路由
+}
+
+service Stream {
+  rpc PersistentStream(stream Message) returns (stream Message);
+}
+
+message Message {
+  Type Code = 1;             // 类型
+  optional string Route = 2; // 路由
+  optional bytes Data = 3;   // 数据
+}
