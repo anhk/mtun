@@ -44,7 +44,6 @@ func main() {
 
 	serverCmd.PersistentFlags().StringArrayVarP(&Cidrs, "cidr", "c", []string{}, "cidr to claim")
 	serverCmd.PersistentFlags().StringVarP(&serverOpt.Token, "token", "t", "", "token to authenticate")
-	serverCmd.PersistentFlags().StringVarP(&serverOpt.BindAddr, "bind", "b", "127.0.0.1", "the address to bind")
 	serverCmd.PersistentFlags().Uint16VarP(&serverOpt.BindPort, "port", "p", 50051, "the port to bind")
 
 	rootCmd.AddCommand(&clientCmd)
