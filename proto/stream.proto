@@ -4,8 +4,9 @@ option go_package = "./proto";
 
 enum Type {
   Data = 0;     // 数据
-  AddRoute = 1; // 添加路由
-  DelRoute = 2; // 删除路由
+  Deny = 1;     // 拒绝
+  AddRoute = 2; // 添加路由
+  DelRoute = 3; // 删除路由
 }
 
 service Stream {
