@@ -17,9 +17,11 @@ var clientCmd = cobra.Command{
 	Use:     "client",
 	Short:   "use client mode",
 	Aliases: []string{"cli", "c"},
+	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
 		tun := tun.AllocTun()
 		log.Info("Tun: %v", tun.Name)
+		select {}
 	},
 }
 
@@ -27,6 +29,7 @@ var serverCmd = cobra.Command{
 	Use:     "server",
 	Short:   "use server mode",
 	Aliases: []string{"srv", "s"},
+	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
 	},
 }
@@ -48,5 +51,5 @@ func main() {
 
 	rootCmd.AddCommand(&clientCmd)
 	rootCmd.AddCommand(&serverCmd)
-	rootCmd.Execute()
+	_ = rootCmd.Execute()
 }
