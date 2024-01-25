@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/anhk/mtun/pkg/log"
-	"github.com/spf13/cobra"
 	"os"
 	"os/user"
+
+	"github.com/anhk/mtun/pkg/log"
+	"github.com/spf13/cobra"
 )
 
 // 检查当前用户是否以Root权限运行

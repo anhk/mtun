@@ -17,6 +17,8 @@ var clientCmd = cobra.Command{
 	Aliases: []string{"cli", "c"},
 	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
+		_ = grpc.StartGrpcClient(&clientOpt)
+
 		// tun := tun.AllocTun()
 		// log.Info("Tun: %v", tun.Name)
 		// select {}
@@ -29,6 +31,7 @@ var serverCmd = cobra.Command{
 	Aliases: []string{"srv", "s"},
 	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
+		_ = grpc.StartGrpcServer(&serverOpt)
 	},
 }
 
