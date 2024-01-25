@@ -6,7 +6,7 @@ all: $(OBJ)
 
 # Build manager binary
 $(OBJ):
-	go build -o $(OBJ) ./cmd/
+	go build -o $(OBJ) ./main/
 
 clean:
 	rm -fr $(OBJ)
