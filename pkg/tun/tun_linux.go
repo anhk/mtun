@@ -19,9 +19,9 @@ func allocTun() *Tun {
 
 	// check(unix.SetNonblock(nfd, true))
 	return (&Tun{
-		filep: os.NewFile(uintptr(nfd), "/dev/net/tun"),
-		Name:  ifr.Name(),
-	}).setAddress("22.22.22.253/31")
+		fp:   os.NewFile(uintptr(nfd), "/dev/net/tun"),
+		Name: ifr.Name(),
+	}).setAddress("22.22.22.252/31")
 }
 
 func (tun *Tun) addRoute(cidr string) error {

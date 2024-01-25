@@ -13,8 +13,8 @@ type TunOption struct {
 }
 
 type Tun struct {
-	filep *os.File
-	Name  string
+	fp   *os.File
+	Name string
 }
 
 func check(e any) {
