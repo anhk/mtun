@@ -19,7 +19,7 @@ func allocTun() *Tun {
 
 	// check(unix.SetNonblock(nfd, true))
 	return (&Tun{
-		fp:   os.NewFile(uintptr(nfd), "/dev/net/tun"),
+		fp:   &Wrapper{os.NewFile(uintptr(nfd), "/dev/net/tun")},
 		Name: ifr.Name(),
 	}).setAddress("22.22.22.252/31")
 }
@@ -35,4 +35,18 @@ func (tun *Tun) delRoute(cidr string) error {
 func (tun *Tun) setAddress(addr string) *Tun {
 	check(exec.Command("ip", "addr", "add", addr, "dev", tun.Name).Run())
 	return tun
+}
+
+func (tun *Wrapper) Read() ([]byte, error) {
+	var data = make([]byte, 4096)
+	datalen, err := tun.ReadWriter.Read(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:datalen], nil
+}
+
+func (tun *Wrapper) Write(data []byte) error {
+	_, err := tun.ReadWriter.Write(data)
+	return err
 }
