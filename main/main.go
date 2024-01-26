@@ -17,11 +17,7 @@ var clientCmd = cobra.Command{
 	Aliases: []string{"cli", "c"},
 	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
-		_ = grpc.StartGrpcClient(&clientOpt)
-
-		// tun := tun.AllocTun()
-		// log.Info("Tun: %v", tun.Name)
-		// select {}
+		NewApp().StartTunnel().RunAsClient(&clientOpt)
 	},
 }
 
@@ -31,7 +27,7 @@ var serverCmd = cobra.Command{
 	Aliases: []string{"srv", "s"},
 	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
-		_ = grpc.StartGrpcServer(&serverOpt)
+		NewApp().StartTunnel().RunAsServer(&serverOpt)
 	},
 }
 
@@ -43,11 +39,11 @@ func main() {
 	clientCmd.PersistentFlags().StringArrayVarP(&Cidrs, "cidr", "c", []string{}, "cidr to claim")
 	clientCmd.PersistentFlags().StringVarP(&clientOpt.Token, "token", "t", "", "token to authenticate")
 	clientCmd.PersistentFlags().StringVarP(&clientOpt.ServerAddr, "server", "s", "127.0.0.1", "the address of server")
-	clientCmd.PersistentFlags().Uint16VarP(&clientOpt.ServerPort, "port", "p", 50051, "the port of server")
+	clientCmd.PersistentFlags().Uint16VarP(&clientOpt.ServerPort, "port", "p", 50052, "the port of server")
 
 	serverCmd.PersistentFlags().StringArrayVarP(&Cidrs, "cidr", "c", []string{}, "cidr to claim")
 	serverCmd.PersistentFlags().StringVarP(&serverOpt.Token, "token", "t", "", "token to authenticate")
-	serverCmd.PersistentFlags().Uint16VarP(&serverOpt.BindPort, "port", "p", 50051, "the port to bind")
+	serverCmd.PersistentFlags().Uint16VarP(&serverOpt.BindPort, "port", "p", 50052, "the port to bind")
 
 	rootCmd.AddCommand(&clientCmd)
 	rootCmd.AddCommand(&serverCmd)

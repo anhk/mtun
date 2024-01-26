@@ -1,22 +1,21 @@
 package tun
 
 import (
+	"github.com/anhk/mtun/pkg/log"
+	"io"
 	"net"
 	"os"
-	"runtime/debug"
-
-	"github.com/anhk/mtun/pkg/log"
 )
 
 type Tun struct {
-	fp   *os.File
+	fp   io.ReadWriter
 	Name string
 }
 
 func check(e any) {
 	if e != nil {
-		log.Error("%s", debug.Stack())
-		panic(e)
+		log.Error("fatal error: %v", e)
+		os.Exit(1)
 	}
 }
 
@@ -38,8 +37,10 @@ func (tun *Tun) DelRoute(cidr string) error {
 	return tun.delRoute(cidr)
 }
 
-func (tun *Tun) Read() {
+func (tun *Tun) Read(p []byte) (n int, err error) {
+	return tun.fp.Read(p)
 }
 
-func (tun *Tun) Write() {
+func (tun *Tun) Write(p []byte) (n int, err error) {
+	return tun.fp.Write(p)
 }

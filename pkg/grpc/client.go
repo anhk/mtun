@@ -38,3 +38,11 @@ func StartGrpcClient(option *ClientOption) *GrpcClient {
 
 	return &GrpcClient{c: c, client: client, stream: stream}
 }
+
+func (client *GrpcClient) ReadMessage() (*proto.Message, error) {
+	return client.stream.Recv()
+}
+
+func (client *GrpcClient) WriteMessage(message *proto.Message) error {
+	return client.stream.Send(message)
+}
