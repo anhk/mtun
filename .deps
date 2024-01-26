@@ -7,8 +7,10 @@ mtun: \
 ./pkg/grpc/server.go \
 ./pkg/grpc/auth.go \
 ./pkg/grpc/grpc.go \
+./pkg/grpc/stream.go \
 ./pkg/grpc/client.go \
 ./pkg/grpc/ds.go \
+./pkg/grpc/packet.go \
 ./pkg/tun/tun_darwin.go \
 ./pkg/tun/tun.go \
 ./pkg/tun/tun_linux.go \

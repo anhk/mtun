@@ -75,13 +75,13 @@ loop:
 }
 
 func (app *App) processTunnel(stopCh chan struct{}) {
-	var buf = make([]byte, 2048)
+	//var buf = make([]byte, 2048)
 
 	for {
-		if n, err := app.tun.Read(buf); err != nil {
+		if buf, err := app.tun.Read(); err != nil {
 			log.Error("read from tun failed: %v", err)
 			break
-		} else if err := app.sock.WriteMessage(&proto.Message{Code: proto.Type_Data, Data: buf[:n]}); err != nil {
+		} else if err := app.sock.WriteMessage(&proto.Message{Code: proto.Type_Data, Data: buf}); err != nil {
 			log.Error("write to grpc failed: %v", err)
 			break
 		}

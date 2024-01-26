@@ -45,22 +45,23 @@ func (server *Server) getRemoteAddr(stream proto.Stream_PersistentStreamServer) 
 	return ""
 }
 
-func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServer) error {
-	var remote string
-	if _, ok := stream.(*TunWrapper); !ok { // 不是TunWrapper，进行鉴权
-		remote = server.getRemoteAddr(stream)
-		log.Info("new stream from %v", remote)
-		token := server.getToken(stream)
-		if !token.Verify(server.Token) {
-			log.Warn("invalid authority from %v", remote)
-			_ = stream.Send(&proto.Message{Code: proto.Type_Deny, Data: []byte("错误的认证信息")})
-			return fmt.Errorf("错误的认证信息")
-		}
+func (server *Server) Auth(stream proto.Stream_PersistentStreamServer) (string, bool) {
+	if _, ok := stream.(*TunWrapper); ok { // TunWrapper，不用进行鉴权
+		return "", true
 	}
+	remote := server.getRemoteAddr(stream)
+	log.Info("new stream from %v", remote)
+	token := server.getToken(stream)
+	if !token.Verify(server.Token) {
+		log.Warn("invalid authority from %v", remote)
+		_ = stream.Send(&proto.Message{Code: proto.Type_Deny, Data: []byte("错误的认证信息")})
+		return remote, false
+	}
+	return remote, true
+}
 
-	log.Debug("Stream online %p", stream)
-
-	// 发路由
+// GatherRouteTo 将所有路由信息集中发送到Stream
+func (server *Server) GatherRouteTo(stream proto.Stream_PersistentStreamServer) {
 	server.streams.Range(func(key, value any) bool {
 		cidrs, _ := value.([]string)
 		for _, cidr := range cidrs {
@@ -69,15 +70,41 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 		}
 		return true
 	})
+}
+
+// BroadcastRouteWithoutMe 发送广播，路由信息
+func (server *Server) BroadcastRouteWithoutMe(stream proto.Stream_PersistentStreamServer, msg *proto.Message) {
+	server.streams.Range(func(key, value any) bool { // TODO: 广播
+		log.Debug("key: %p, stream: %p", key, stream)
+		if s, ok := key.(proto.Stream_PersistentStreamServer); ok && s != stream {
+			log.Debug("s: %p, stream: %p", s, stream)
+			_ = s.Send(msg)
+		}
+		return true
+	})
+}
+
+// stream退出时清理路由
+func (server *Server) cleanupStream(stream proto.Stream_PersistentStreamServer) {
+	log.Debug("stream 退出")
+	if cidrs, ok := server.streams.LoadAndDelete(stream); ok {
+		server.rt.DeleteBatch(cidrs.([]string))
+	}
+}
+
+func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServer) error {
+	remote, ok := server.Auth(stream)
+	if !ok {
+		return fmt.Errorf("错误的认证信息")
+	}
+	log.Debug("Stream [%v] online %p", remote, stream)
+
+	// 发路由
+	server.GatherRouteTo(stream)
 
 	log.Debug("将本Stream加入到集合 as key, stream: %p", stream)
 	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
-	defer func() {
-		log.Debug("stream 退出")
-		if cidrs, ok := server.streams.LoadAndDelete(stream); ok {
-			server.rt.DeleteBatch(cidrs.([]string))
-		}
-	}()
+	defer func() { server.cleanupStream(stream) }()
 
 	for {
 		msg, err := stream.Recv()
@@ -94,17 +121,20 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 			cidrs, _ := server.streams.Load(stream)
 			server.streams.Store(stream, append(cidrs.([]string), cidr))
 			_ = server.rt.Add(cidr, stream)
-			server.streams.Range(func(key, value any) bool { // TODO: 广播
-				log.Debug("key: %p, stream: %p", key, stream)
-				if s, ok := key.(proto.Stream_PersistentStreamServer); ok && s != stream {
-					log.Debug("s: %p, stream: %p", s, stream)
-					_ = s.Send(msg)
-				}
-				return true
-			})
+			server.BroadcastRouteWithoutMe(stream, msg)
 		case proto.Type_Data:
-			// TODO: 路由
 			// TODO: 解包
+			log.Debug("这里数据包的Payload")
+			hdr, err := ParseIpv4Hdr(msg.Data)
+			if err != nil { // invalid packet
+				log.Debug("解IPv4头失败: %v", err)
+				continue
+			}
+
+			log.Debug("packet from %v to %v", hdr.Src.String(), hdr.Dst.String())
+
+			// TODO: 路由
+
 			//server.rt.Lookup()
 			_ = server.tun.Send(msg)
 		}

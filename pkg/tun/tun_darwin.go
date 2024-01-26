@@ -74,7 +74,7 @@ func allocTun() *Tun {
 	}
 
 	return (&Tun{
-		fp:   os.NewFile(uintptr(nfd), "/dev/net/tun"),
+		fp:   &Wrapper{os.NewFile(uintptr(nfd), "/dev/net/tun")},
 		Name: string(ifName.name[:ifNameSize-1]),
 	}).setAddress("22.22.22.252/31", "22.22.22.253")
 }
@@ -90,4 +90,25 @@ func (tun *Tun) delRoute(cidr string) error {
 func (tun *Tun) setAddress(addr, remote string) *Tun {
 	check(exec.Command("ifconfig", tun.Name, addr, remote, "up").Run())
 	return tun
+}
+
+func (tun *Wrapper) Read() ([]byte, error) {
+	var data = make([]byte, 4096)
+	datalen, err := tun.ReadWriter.Read(data)
+	if err != nil {
+		return nil, err
+	}
+	if datalen < 4 {
+		return nil, fmt.Errorf("data is too short")
+	}
+	return data[4:datalen], nil
+}
+
+func (tun *Wrapper) Write(data []byte) error {
+	var hdr = [4]byte{0, 0, 0, 2}
+	if data[0]&0xf == 6 {
+		hdr[3] = 10
+	}
+	_, err := tun.ReadWriter.Write(append(hdr[:], data...))
+	return err
 }

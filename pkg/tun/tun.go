@@ -7,8 +7,18 @@ import (
 	"os"
 )
 
+type Interface interface {
+	Read() ([]byte, error)
+	Write([]byte) error
+}
+
+// Wrapper MacOS有4字节的头需要处理一下
+type Wrapper struct {
+	io.ReadWriter
+}
+
 type Tun struct {
-	fp   io.ReadWriter
+	fp   Interface
 	Name string
 }
 
@@ -39,10 +49,10 @@ func (tun *Tun) DelRoute(cidr string) error {
 	return tun.delRoute(cidr)
 }
 
-func (tun *Tun) Read(p []byte) (n int, err error) {
-	return tun.fp.Read(p)
+func (tun *Tun) Read() ([]byte, error) {
+	return tun.fp.Read()
 }
 
-func (tun *Tun) Write(p []byte) (n int, err error) {
+func (tun *Tun) Write(p []byte) (err error) {
 	return tun.fp.Write(p)
 }
