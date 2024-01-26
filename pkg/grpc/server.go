@@ -134,9 +134,12 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 			log.Debug("packet from %v to %v", hdr.Src.String(), hdr.Dst.String())
 
 			// TODO: 路由
+			if st, ok := server.rt.Lookup(hdr.Dst); ok {
+				st.Send(msg)
+			}
 
 			//server.rt.Lookup()
-			_ = server.tun.Send(msg)
+			//_ = server.tun.Send(msg)
 		}
 	}
 }

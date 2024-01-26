@@ -3,6 +3,7 @@ package grpc
 import (
 	"github.com/anhk/mtun/proto"
 	"github.com/gaissmai/cidrtree"
+	"net"
 	"net/netip"
 )
 
@@ -40,9 +41,18 @@ func (ds *DataStore) DeleteBatch(cidrs []string) {
 	}
 }
 
-func (ds *DataStore) Lookup(addr string) (t proto.Stream_PersistentStreamServer, ok bool) {
-	ipaddr, err := netip.ParseAddr(addr)
-	if err != nil {
+//func (ds *DataStore) Lookup(addr string) (t proto.Stream_PersistentStreamServer, ok bool) {
+//	ipaddr, err := netip.ParseAddr(addr)
+//	if err != nil {
+//		return t, false
+//	}
+//	_, t, ok = ds.rt.Lookup(ipaddr)
+//	return t, ok
+//}
+
+func (ds *DataStore) Lookup(addr net.IP) (t proto.Stream_PersistentStreamServer, ok bool) {
+	ipaddr, ok := netip.AddrFromSlice(addr.To4())
+	if !ok {
 		return t, false
 	}
 	_, t, ok = ds.rt.Lookup(ipaddr)
