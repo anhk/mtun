@@ -17,7 +17,7 @@ type ServerOption struct {
 	BindPort uint16
 }
 
-type GrpcServer struct {
+type Server struct {
 	proto.UnimplementedStreamServer
 
 	tun     *TunWrapper // 本地隧道
@@ -27,7 +27,7 @@ type GrpcServer struct {
 	Token string
 }
 
-func (server *GrpcServer) getToken(stream proto.Stream_PersistentStreamServer) *TokenAuth {
+func (server *Server) getToken(stream proto.Stream_PersistentStreamServer) *TokenAuth {
 	token := &TokenAuth{}
 	if meta, ok := metadata.FromIncomingContext(stream.Context()); !ok {
 		return token
@@ -36,7 +36,7 @@ func (server *GrpcServer) getToken(stream proto.Stream_PersistentStreamServer) *
 	}
 }
 
-func (server *GrpcServer) getRemoteAddr(stream proto.Stream_PersistentStreamServer) string {
+func (server *Server) getRemoteAddr(stream proto.Stream_PersistentStreamServer) string {
 	if p, ok := peer.FromContext(stream.Context()); ok {
 		if tcpAddr, ok := p.Addr.(*net.TCPAddr); ok {
 			return tcpAddr.IP.String()
@@ -45,7 +45,7 @@ func (server *GrpcServer) getRemoteAddr(stream proto.Stream_PersistentStreamServ
 	return ""
 }
 
-func (server *GrpcServer) PersistentStream(stream proto.Stream_PersistentStreamServer) error {
+func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServer) error {
 	var remote string
 	if _, ok := stream.(*TunWrapper); !ok { // 不是TunWrapper，进行鉴权
 		remote = server.getRemoteAddr(stream)
@@ -65,7 +65,7 @@ func (server *GrpcServer) PersistentStream(stream proto.Stream_PersistentStreamS
 		cidrs, _ := value.([]string)
 		for _, cidr := range cidrs {
 			log.Debug("广播初始化路由：%v", cidr)
-			stream.Send(&proto.Message{Code: proto.Type_AddRoute, Data: []byte(cidr)})
+			_ = stream.Send(&proto.Message{Code: proto.Type_AddRoute, Data: []byte(cidr)})
 		}
 		return true
 	})
@@ -93,12 +93,12 @@ func (server *GrpcServer) PersistentStream(stream proto.Stream_PersistentStreamS
 			cidr := string(msg.Data)
 			cidrs, _ := server.streams.Load(stream)
 			server.streams.Store(stream, append(cidrs.([]string), cidr))
-			server.rt.Add(cidr, stream)
+			_ = server.rt.Add(cidr, stream)
 			server.streams.Range(func(key, value any) bool { // TODO: 广播
 				log.Debug("key: %p, stream: %p", key, stream)
 				if s, ok := key.(proto.Stream_PersistentStreamServer); ok && s != stream {
 					log.Debug("s: %p, stream: %p", s, stream)
-					s.Send(msg)
+					_ = s.Send(msg)
 				}
 				return true
 			})
@@ -106,19 +106,19 @@ func (server *GrpcServer) PersistentStream(stream proto.Stream_PersistentStreamS
 			// TODO: 路由
 			// TODO: 解包
 			//server.rt.Lookup()
-			server.tun.Send(msg)
+			_ = server.tun.Send(msg)
 		}
 	}
 }
 
-func StartGrpcServer(option *ServerOption) *GrpcServer {
+func StartGrpcServer(option *ServerOption) *Server {
 	bindAddr := fmt.Sprintf(":%d", option.BindPort)
 	log.Info("bind grpc on %v", bindAddr)
 
 	listen, err := net.Listen("tcp", bindAddr)
 	check(err)
 
-	server := &GrpcServer{
+	server := &Server{
 		Token: option.Token,
 		tun:   NewTunWrapper(),
 		rt:    NewDataStore(),
@@ -126,17 +126,17 @@ func StartGrpcServer(option *ServerOption) *GrpcServer {
 	grpcSvc := grpc.NewServer()
 	proto.RegisterStreamServer(grpcSvc, server)
 	go func() { check(grpcSvc.Serve(listen)) }()
-	go func() { server.PersistentStream(server.tun) }() // 将隧道封装成GRPCStream
+	go func() { _ = server.PersistentStream(server.tun) }() // 将隧道封装成GRPCStream
 	return server
 }
 
 // ReadMessage 从GRPCServer读取发送给Tunnel的数据
-func (server *GrpcServer) ReadMessage() (*proto.Message, error) {
+func (server *Server) ReadMessage() (*proto.Message, error) {
 	return <-server.tun.tx, nil
 }
 
 // WriteMessage 本地隧道向GRPCServer写数据
-func (server *GrpcServer) WriteMessage(msg *proto.Message) error {
+func (server *Server) WriteMessage(msg *proto.Message) error {
 	server.tun.rx <- msg
 	return nil
 }

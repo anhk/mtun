@@ -16,13 +16,13 @@ type ClientOption struct {
 	ServerPort uint16 // the port of server
 }
 
-type GrpcClient struct {
+type Client struct {
 	c      grpc.ClientConnInterface
 	client proto.StreamClient
 	stream proto.Stream_PersistentStreamClient
 }
 
-func StartGrpcClient(option *ClientOption) *GrpcClient {
+func StartGrpcClient(option *ClientOption) *Client {
 	token := &TokenAuth{}
 	token.T = time.Now().Unix()
 	token.S = token.Sign(option.Token)
@@ -36,13 +36,13 @@ func StartGrpcClient(option *ClientOption) *GrpcClient {
 	stream, err := client.PersistentStream(context.Background())
 	check(err)
 
-	return &GrpcClient{c: c, client: client, stream: stream}
+	return &Client{c: c, client: client, stream: stream}
 }
 
-func (client *GrpcClient) ReadMessage() (*proto.Message, error) {
+func (client *Client) ReadMessage() (*proto.Message, error) {
 	return client.stream.Recv()
 }
 
-func (client *GrpcClient) WriteMessage(message *proto.Message) error {
+func (client *Client) WriteMessage(message *proto.Message) error {
 	return client.stream.Send(message)
 }
