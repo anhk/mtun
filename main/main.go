@@ -41,11 +41,11 @@ func main() {
 	clientCmd.PersistentFlags().StringVarP(&clientOpt.Token, "token", "t", "", "token to authenticate")
 	clientCmd.PersistentFlags().StringVarP(&clientOpt.ServerAddr, "server", "s", "127.0.0.1", "the address of server")
 	clientCmd.PersistentFlags().Uint16VarP(&clientOpt.ServerPort, "port", "p", 50052, "the port of server")
+	clientCmd.PersistentFlags().IntVarP(&log.Level, "loglevel", "v", log.LEVEL_INFO, "log level")
 
 	serverCmd.PersistentFlags().StringArrayVarP(&app.Cidrs, "cidr", "c", []string{}, "cidr to claim")
 	serverCmd.PersistentFlags().StringVarP(&serverOpt.Token, "token", "t", "", "token to authenticate")
 	serverCmd.PersistentFlags().Uint16VarP(&serverOpt.BindPort, "port", "p", 50052, "the port to bind")
-
 	serverCmd.PersistentFlags().IntVarP(&log.Level, "loglevel", "v", log.LEVEL_INFO, "log level")
 
 	rootCmd.AddCommand(&clientCmd)

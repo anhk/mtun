@@ -46,26 +46,34 @@ func (server *GrpcServer) getRemoteAddr(stream proto.Stream_PersistentStreamServ
 }
 
 func (server *GrpcServer) PersistentStream(stream proto.Stream_PersistentStreamServer) error {
-	remote := server.getRemoteAddr(stream)
-	log.Info("new stream from %v", remote)
-	token := server.getToken(stream)
-	if !token.Verify(server.Token) {
-		log.Warn("invalid authority from %v", remote)
-		_ = stream.Send(&proto.Message{Code: proto.Type_Deny, Data: []byte("错误的认证信息")})
-		return fmt.Errorf("错误的认证信息")
+	var remote string
+	if _, ok := stream.(*TunWrapper); !ok { // 不是TunWrapper，进行鉴权
+		remote = server.getRemoteAddr(stream)
+		log.Info("new stream from %v", remote)
+		token := server.getToken(stream)
+		if !token.Verify(server.Token) {
+			log.Warn("invalid authority from %v", remote)
+			_ = stream.Send(&proto.Message{Code: proto.Type_Deny, Data: []byte("错误的认证信息")})
+			return fmt.Errorf("错误的认证信息")
+		}
 	}
+
+	log.Debug("Stream online %p", stream)
 
 	// 发路由
 	server.streams.Range(func(key, value any) bool {
 		cidrs, _ := value.([]string)
 		for _, cidr := range cidrs {
+			log.Debug("广播初始化路由：%v", cidr)
 			stream.Send(&proto.Message{Code: proto.Type_AddRoute, Data: []byte(cidr)})
 		}
 		return true
 	})
 
+	log.Debug("将本Stream加入到集合 as key, stream: %p", stream)
 	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
 	defer func() {
+		log.Debug("stream 退出")
 		if cidrs, ok := server.streams.LoadAndDelete(stream); ok {
 			server.rt.DeleteBatch(cidrs.([]string))
 		}
@@ -78,19 +86,22 @@ func (server *GrpcServer) PersistentStream(stream proto.Stream_PersistentStreamS
 			return err
 		}
 
+		log.Debug("收到消息：type: %d", msg.Code)
 		switch msg.Code {
 		case proto.Type_AddRoute:
+			log.Debug("这是添加路由的消息")
 			cidr := string(msg.Data)
 			cidrs, _ := server.streams.Load(stream)
 			server.streams.Store(stream, append(cidrs.([]string), cidr))
 			server.rt.Add(cidr, stream)
 			server.streams.Range(func(key, value any) bool { // TODO: 广播
+				log.Debug("key: %p, stream: %p", key, stream)
 				if s, ok := key.(proto.Stream_PersistentStreamServer); ok && s != stream {
+					log.Debug("s: %p, stream: %p", s, stream)
 					s.Send(msg)
 				}
 				return true
 			})
-			server.tun.Send(msg)
 		case proto.Type_Data:
 			// TODO: 路由
 			// TODO: 解包
@@ -109,55 +120,47 @@ func StartGrpcServer(option *ServerOption) *GrpcServer {
 
 	server := &GrpcServer{
 		Token: option.Token,
-		tun:   &TunWrapper{t: make(chan *proto.Message)},
+		tun:   NewTunWrapper(),
 		rt:    NewDataStore(),
 	}
 	grpcSvc := grpc.NewServer()
 	proto.RegisterStreamServer(grpcSvc, server)
 	go func() { check(grpcSvc.Serve(listen)) }()
+	go func() { server.PersistentStream(server.tun) }() // 将隧道封装成GRPCStream
 	return server
 }
 
 // ReadMessage 从GRPCServer读取发送给Tunnel的数据
 func (server *GrpcServer) ReadMessage() (*proto.Message, error) {
-	return server.tun.Recv()
+	return <-server.tun.tx, nil
 }
 
 // WriteMessage 本地隧道向GRPCServer写数据
 func (server *GrpcServer) WriteMessage(msg *proto.Message) error {
-	switch msg.Code {
-	case proto.Type_AddRoute:
-		server.rt.Add(string(msg.Data), server.tun)
-		// TODO: 广播
-	case proto.Type_Data:
-		// TODO: 路由
-
-		// FIXME: 先广播给Socket
-		var err error
-		server.streams.Range(func(key, value any) bool {
-			if s, ok := key.(proto.Stream_PersistentStreamServer); ok {
-				err = s.Send(msg)
-			}
-			return true
-		})
-		return err
-	}
+	server.tun.rx <- msg
 	return nil
 }
 
 // TunWrapper 将Tunnel模拟GRPC Stream
 type TunWrapper struct {
-	t chan *proto.Message
+	tx, rx chan *proto.Message
 	grpc.ServerStream
+}
+
+func NewTunWrapper() *TunWrapper {
+	return &TunWrapper{
+		rx: make(chan *proto.Message),
+		tx: make(chan *proto.Message),
+	}
 }
 
 // Send 向隧道发送数据
 func (tun *TunWrapper) Send(msg *proto.Message) error {
-	tun.t <- msg
+	tun.tx <- msg
 	return nil
 }
 
 // Recv 从隧道读数据，由外部APP调用
 func (tun *TunWrapper) Recv() (*proto.Message, error) {
-	return <-tun.t, nil
+	return <-tun.rx, nil
 }
