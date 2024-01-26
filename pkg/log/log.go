@@ -6,19 +6,17 @@ import (
 	"os"
 )
 
-type LEVEL int
-
 const (
-	LEVEL_DEBUG LEVEL = iota
-	LEVEL_INFO
-	LEVEL_WARN
+	LEVEL_NONE = iota
 	LEVEL_ERROR
-	LEVEL_NONE
+	LEVEL_WARN
+	LEVEL_INFO
+	LEVEL_DEBUG
 )
 
 var (
 	logger *log.Logger
-	level  = LEVEL_DEBUG
+	Level  = LEVEL_DEBUG
 )
 
 func init() {
@@ -30,8 +28,8 @@ func SetLogger(l *log.Logger) {
 	logger = l
 }
 
-func SetLevel(l LEVEL) {
-	level = l
+func SetLevel(l int) {
+	Level = l
 }
 
 func logPrint(prefix string, v ...any) {
@@ -42,25 +40,25 @@ func logPrint(prefix string, v ...any) {
 }
 
 func Debug(f string, v ...interface{}) {
-	if level <= LEVEL_DEBUG {
+	if Level > LEVEL_DEBUG {
 		logPrint("[DEBUG]", fmt.Sprintf(f, v...))
 	}
 }
 
 func Info(f string, v ...interface{}) {
-	if level <= LEVEL_INFO {
+	if Level > LEVEL_INFO {
 		logPrint("[INFO]", fmt.Sprintf(f, v...))
 	}
 }
 
 func Warn(f string, v ...interface{}) {
-	if level <= LEVEL_WARN {
+	if Level > LEVEL_WARN {
 		logPrint("[WARN]", fmt.Sprintf(f, v...))
 	}
 }
 
 func Error(f string, v ...interface{}) {
-	if level <= LEVEL_ERROR {
+	if Level > LEVEL_ERROR {
 		logPrint("[ERROR]", fmt.Sprintf(f, v...))
 	}
 }

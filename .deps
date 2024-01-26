@@ -8,9 +8,9 @@ mtun: \
 ./pkg/grpc/auth.go \
 ./pkg/grpc/grpc.go \
 ./pkg/grpc/client.go \
+./pkg/grpc/ds.go \
 ./pkg/tun/tun_darwin.go \
 ./pkg/tun/tun.go \
 ./pkg/tun/tun_linux.go \
-./pkg/datastore/datastore.go \
 ./pkg/log/log.go \
 

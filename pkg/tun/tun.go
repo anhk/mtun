@@ -24,6 +24,7 @@ func AllocTun() *Tun {
 }
 
 func (tun *Tun) AddRoute(cidr string) error {
+	log.Info("add route %v to %v", cidr, tun.Name)
 	if _, _, err := net.ParseCIDR(cidr); err != nil {
 		return err
 	}
@@ -31,6 +32,7 @@ func (tun *Tun) AddRoute(cidr string) error {
 }
 
 func (tun *Tun) DelRoute(cidr string) error {
+	log.Info("del route %v to %v", cidr, tun.Name)
 	if _, _, err := net.ParseCIDR(cidr); err != nil {
 		return err
 	}

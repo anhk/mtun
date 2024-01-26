@@ -8,12 +8,9 @@ import (
 )
 
 type App struct {
-	tun  *tun.Tun
-	sock grpc.Socket
-}
-
-func NewApp() *App {
-	return &App{}
+	tun   *tun.Tun
+	sock  grpc.Socket
+	Cidrs []string
 }
 
 func (app *App) run() {
@@ -42,10 +39,16 @@ func (app *App) StartTunnel() *App {
 
 func (app *App) processSocket(stopCh chan struct{}) {
 	// Step 1: 发送路由
+	for _, cdir := range app.Cidrs {
+		log.Debug("发送路由%v到GRPC", cdir)
+		if err := app.sock.WriteMessage(&proto.Message{Code: proto.Type_AddRoute, Data: []byte(cdir)}); err != nil {
+			log.Error("write route to grpc failed: %v", err)
+			stopCh <- struct{}{}
+			return
+		}
+	}
 
-	// Stop 2:
-	//	- 读 If 路由
-	//  - 读 If 数据包
+	// Stop 2: 处理GRPC数据
 loop:
 	for {
 		msg, err := app.sock.ReadMessage()
@@ -63,10 +66,11 @@ loop:
 		case proto.Type_DelRoute:
 			app.tun.DelRoute(string(msg.Data))
 		case proto.Type_Data:
+			app.tun.Write(msg.Data)
 		}
 	}
 
-	log.Info("exit")
+	log.Info("process grpc goroutine exit")
 	stopCh <- struct{}{}
 }
 
@@ -74,11 +78,14 @@ func (app *App) processTunnel(stopCh chan struct{}) {
 	var buf = make([]byte, 2048)
 
 	for {
-		if _, err := app.tun.Read(buf); err != nil {
+		if n, err := app.tun.Read(buf); err != nil {
+			log.Error("read from tun failed: %v", err)
 			break
-		} else {
-			//app.sock.Write(buf[:n])
+		} else if err := app.sock.WriteMessage(&proto.Message{Code: proto.Type_Data, Data: buf[:n]}); err != nil {
+			log.Error("write to grpc failed: %v", err)
+			break
 		}
 	}
+	log.Info("process tunnel goroutine exit")
 	stopCh <- struct{}{}
 }
