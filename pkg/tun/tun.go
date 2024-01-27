@@ -1,10 +1,11 @@
 package tun
 
 import (
-	"github.com/anhk/mtun/pkg/log"
 	"io"
 	"net"
 	"os"
+
+	"github.com/anhk/mtun/pkg/log"
 )
 
 type Interface interface {
@@ -33,9 +34,18 @@ func AllocTun() *Tun {
 	return allocTun()
 }
 
+func (tun *Tun) SetAddress(addr, gateway string) error {
+	if _, _, err := net.ParseCIDR(addr); err != nil {
+		log.Error("parse addr failed: %v", addr)
+		return err
+	}
+	return tun.setAddress(addr, gateway)
+}
+
 func (tun *Tun) AddRoute(cidr string) error {
 	log.Info("add route %v to %v", cidr, tun.Name)
 	if _, _, err := net.ParseCIDR(cidr); err != nil {
+		log.Error("invalid route: %v", cidr)
 		return err
 	}
 	return tun.addRoute(cidr)

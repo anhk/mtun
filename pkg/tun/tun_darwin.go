@@ -76,7 +76,12 @@ func allocTun() *Tun {
 	return (&Tun{
 		fp:   &Wrapper{os.NewFile(uintptr(nfd), "/dev/net/tun")},
 		Name: string(ifName.name[:ifNameSize-1]),
-	}).setAddress("22.22.22.252/31", "22.22.22.253")
+	}).up()
+}
+
+func (tun *Tun) up() *Tun {
+	exec.Command("ip", "link", "set", tun.Name, "up").Run()
+	return tun
 }
 
 func (tun *Tun) addRoute(cidr string) error {
@@ -87,9 +92,8 @@ func (tun *Tun) delRoute(cidr string) error {
 	return exec.Command("ip", "route", "del", cidr, "dev", tun.Name).Run()
 }
 
-func (tun *Tun) setAddress(addr, remote string) *Tun {
-	check(exec.Command("ifconfig", tun.Name, addr, remote, "up").Run())
-	return tun
+func (tun *Tun) setAddress(addr, remote string) error {
+	return exec.Command("ifconfig", tun.Name, addr, remote, "up").Run()
 }
 
 func (tun *Wrapper) Read() ([]byte, error) {

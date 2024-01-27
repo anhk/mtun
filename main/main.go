@@ -46,6 +46,7 @@ func main() {
 	serverCmd.PersistentFlags().StringArrayVarP(&app.Cidrs, "cidr", "c", []string{}, "cidr to claim")
 	serverCmd.PersistentFlags().StringVarP(&serverOpt.Token, "token", "t", "", "token to authenticate")
 	serverCmd.PersistentFlags().Uint16VarP(&serverOpt.BindPort, "port", "p", 50052, "the port to bind")
+	serverCmd.PersistentFlags().StringVar(&app.Subnet, "subnet", "22.22.22.0/24", "the subnet of mtun")
 	serverCmd.PersistentFlags().IntVarP(&log.Level, "loglevel", "v", log.LEVEL_INFO, "log level")
 
 	rootCmd.AddCommand(&clientCmd)

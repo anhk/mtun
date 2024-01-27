@@ -8,9 +8,10 @@ import (
 )
 
 type App struct {
-	tun   *tun.Tun
-	sock  grpc.Socket
-	Cidrs []string
+	tun    *tun.Tun
+	sock   grpc.Socket
+	Cidrs  []string
+	Subnet string // 22.22.22.0/24
 }
 
 func (app *App) run() {
@@ -27,7 +28,7 @@ func (app *App) RunAsClient(clientOpt *grpc.ClientOption) {
 }
 
 func (app *App) RunAsServer(serverOpt *grpc.ServerOption) {
-	app.sock = grpc.StartGrpcServer(serverOpt)
+	app.sock = grpc.StartGrpcServer(serverOpt, app.Subnet)
 	log.Info("start grpc server ok")
 	app.run()
 }
@@ -57,6 +58,8 @@ loop:
 			break
 		}
 
+		log.Debug("receive %d", msg.Code)
+
 		switch msg.Code {
 		case proto.Type_Deny:
 			log.Info("authority denied")
@@ -65,6 +68,9 @@ loop:
 			app.tun.AddRoute(string(msg.Data))
 		case proto.Type_DelRoute:
 			app.tun.DelRoute(string(msg.Data))
+		case proto.Type_Assign:
+			log.Debug("收到分配地址的数据包")
+			app.tun.SetAddress(string(msg.Data), msg.Gateway)
 		case proto.Type_Data:
 			app.tun.Write(msg.Data)
 		}
@@ -81,6 +87,9 @@ func (app *App) processTunnel(stopCh chan struct{}) {
 		if buf, err := app.tun.Read(); err != nil {
 			log.Error("read from tun failed: %v", err)
 			break
+		} else if buf[0]&0xF0 != 0x40 { // only ipv4
+			log.Debug("not ipv4")
+			continue
 		} else if err := app.sock.WriteMessage(&proto.Message{Code: proto.Type_Data, Data: buf}); err != nil {
 			log.Error("write to grpc failed: %v", err)
 			break

@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/anhk/mtun/pkg/ipam"
 	"github.com/anhk/mtun/pkg/log"
 	"github.com/anhk/mtun/proto"
 	"google.golang.org/grpc"
@@ -23,6 +24,7 @@ type Server struct {
 	tun     *TunWrapper // 本地隧道
 	rt      *DataStore  // 路由
 	streams sync.Map    // 所有Streams集合
+	ipam    *ipam.IPAM
 
 	Token string
 }
@@ -88,7 +90,12 @@ func (server *Server) BroadcastRouteWithoutMe(stream proto.Stream_PersistentStre
 func (server *Server) cleanupStream(stream proto.Stream_PersistentStreamServer) {
 	log.Debug("stream 退出")
 	if cidrs, ok := server.streams.LoadAndDelete(stream); ok {
-		server.rt.DeleteBatch(cidrs.([]string))
+		cidrs := cidrs.([]string)
+		server.rt.DeleteBatch(cidrs)
+		for _, cidr := range cidrs {
+			log.Debug("广播删除路由：%v", cidr)
+			server.BroadcastRouteWithoutMe(stream, &proto.Message{Code: proto.Type_DelRoute, Data: []byte(cidr)})
+		}
 	}
 }
 
@@ -101,10 +108,29 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 
 	// 发路由
 	server.GatherRouteTo(stream)
+	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
 
 	log.Debug("将本Stream加入到集合 as key, stream: %p", stream)
-	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
-	defer func() { server.cleanupStream(stream) }()
+	addr, err := server.ipam.Alloc()
+	if err != nil {
+		log.Error("unavailable ipam alloc address: %v", err)
+		return err
+	}
+	server.rt.Add(fmt.Sprintf("%v/32", addr), stream) // 直连路由
+
+	defer func() {
+		server.cleanupStream(stream)
+		server.ipam.Release(addr)
+	}()
+
+	log.Debug("stream: %p", stream)
+	stream.Send(&proto.Message{
+		Code:    proto.Type_Assign,
+		Data:    []byte(fmt.Sprintf("%v/%v", addr.String(), server.ipam.Mask())),
+		Gateway: server.ipam.Gateway().String(),
+	})
+
+	log.Debug("分配IP地址: %v/%v@%v", addr.String(), server.ipam.Mask(), server.ipam.Gateway().String())
 
 	for {
 		msg, err := stream.Recv()
@@ -113,7 +139,7 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 			return err
 		}
 
-		log.Debug("收到消息：type: %d", msg.Code)
+		log.Debug("收到消息: type: %d", msg.Code)
 		switch msg.Code {
 		case proto.Type_AddRoute:
 			log.Debug("这是添加路由的消息")
@@ -144,7 +170,7 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 	}
 }
 
-func StartGrpcServer(option *ServerOption) *Server {
+func StartGrpcServer(option *ServerOption, subnet string) *Server {
 	bindAddr := fmt.Sprintf(":%d", option.BindPort)
 	log.Info("bind grpc on %v", bindAddr)
 
@@ -156,6 +182,9 @@ func StartGrpcServer(option *ServerOption) *Server {
 		tun:   NewTunWrapper(),
 		rt:    NewDataStore(),
 	}
+	server.ipam, err = ipam.NewIPAM(subnet)
+	check(err)
+
 	grpcSvc := grpc.NewServer()
 	proto.RegisterStreamServer(grpcSvc, server)
 	go func() { check(grpcSvc.Serve(listen)) }()
@@ -182,8 +211,8 @@ type TunWrapper struct {
 
 func NewTunWrapper() *TunWrapper {
 	return &TunWrapper{
-		rx: make(chan *proto.Message),
-		tx: make(chan *proto.Message),
+		rx: make(chan *proto.Message, 2048),
+		tx: make(chan *proto.Message, 2048),
 	}
 }
 

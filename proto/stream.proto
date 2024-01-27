@@ -7,6 +7,7 @@ enum Type {
   Deny = 1;     // 拒绝
   AddRoute = 2; // 添加路由
   DelRoute = 3; // 删除路由
+  Assign = 4;   // 分配IP地址
 }
 
 service Stream {
@@ -14,7 +15,7 @@ service Stream {
 }
 
 message Message {
-  Type Code = 1;             // 类型
-  optional string Route = 2; // 路由
-  optional bytes Data = 3;   // 数据
+  Type Code = 1;      // 类型
+  bytes Data = 2;     // 数据
+  string Gateway = 3; // 网关地址
 }

@@ -40,25 +40,25 @@ func logPrint(prefix string, v ...any) {
 }
 
 func Debug(f string, v ...interface{}) {
-	if Level > LEVEL_DEBUG {
+	if Level >= LEVEL_DEBUG {
 		logPrint("[DEBUG]", fmt.Sprintf(f, v...))
 	}
 }
 
 func Info(f string, v ...interface{}) {
-	if Level > LEVEL_INFO {
+	if Level >= LEVEL_INFO {
 		logPrint("[INFO]", fmt.Sprintf(f, v...))
 	}
 }
 
 func Warn(f string, v ...interface{}) {
-	if Level > LEVEL_WARN {
+	if Level >= LEVEL_WARN {
 		logPrint("[WARN]", fmt.Sprintf(f, v...))
 	}
 }
 
 func Error(f string, v ...interface{}) {
-	if Level > LEVEL_ERROR {
+	if Level >= LEVEL_ERROR {
 		logPrint("[ERROR]", fmt.Sprintf(f, v...))
 	}
 }
