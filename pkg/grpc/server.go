@@ -2,14 +2,14 @@ package grpc
 
 import (
 	"fmt"
-	"github.com/anhk/mtun/pkg/log"
-	"google.golang.org/grpc/peer"
 	"net"
 	"sync"
 
+	"github.com/anhk/mtun/pkg/log"
 	"github.com/anhk/mtun/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 )
 
 type ServerOption struct {

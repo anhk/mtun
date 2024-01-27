@@ -1,9 +1,10 @@
 package grpc
 
 import (
+	"os"
+
 	"github.com/anhk/mtun/pkg/log"
 	"github.com/anhk/mtun/proto"
-	"os"
 )
 
 type Socket interface {

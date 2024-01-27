@@ -1,10 +1,11 @@
 package grpc
 
 import (
-	"github.com/anhk/mtun/proto"
-	"github.com/gaissmai/cidrtree"
 	"net"
 	"net/netip"
+
+	"github.com/anhk/mtun/proto"
+	"github.com/gaissmai/cidrtree"
 )
 
 type DataStore struct {
