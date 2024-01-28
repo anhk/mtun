@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"net"
 	"os"
 	"os/exec"
 
@@ -43,6 +44,11 @@ func (tun *Tun) delRoute(cidr string) error {
 func (tun *Tun) setAddress(addr, _ string) error {
 	log.Debug("%v %v %v %v %v %v", "ip", "addr", "add", addr, "dev", tun.Name)
 	return exec.Command("ip", "addr", "add", addr, "dev", tun.Name).Run()
+}
+
+func (tun *Tun) setSNAT(ipNet *net.IPNet) error {
+	exec.Command("iptables", "-t", "nat", "-D", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
+	return exec.Command("iptables", "-t", "nat", "-I", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
 }
 
 func (tun *Wrapper) Read() ([]byte, error) {

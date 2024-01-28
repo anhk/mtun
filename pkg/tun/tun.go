@@ -35,11 +35,15 @@ func AllocTun() *Tun {
 }
 
 func (tun *Tun) SetAddress(addr, gateway string) error {
-	if _, _, err := net.ParseCIDR(addr); err != nil {
+	if _, ipNet, err := net.ParseCIDR(addr); err != nil {
 		log.Error("parse addr failed: %v", addr)
 		return err
+	} else if err := tun.setAddress(addr, gateway); err != nil {
+		return err
+	} else if err := tun.setSNAT(ipNet); err != nil {
+		return err
 	}
-	return tun.setAddress(addr, gateway)
+	return nil
 }
 
 func (tun *Tun) AddRoute(cidr string) error {
