@@ -94,7 +94,13 @@ func (tun *Tun) delRoute(cidr string) error {
 }
 
 func (tun *Tun) setAddress(addr, remote string) error {
-	return exec.Command("ifconfig", tun.Name, addr, remote, "up").Run()
+
+	// 设置IP地址
+	if err := exec.Command("ifconfig", tun.Name, addr, remote, "up").Run(); err != nil {
+		return err
+	}
+	// 设置直连路由
+	return tun.addRoute(addr)
 }
 
 func (tun *Tun) setSNAT(_ *net.IPNet) error {
