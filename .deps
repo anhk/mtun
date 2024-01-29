@@ -1,18 +1,19 @@
 mtun: \
-./proto/stream_grpc.pb.go \
-./proto/stream.pb.go \
-./main/check.go \
-./main/app.go \
-./main/main.go \
 ./pkg/grpc/server.go \
-./pkg/grpc/auth.go \
+./pkg/grpc/client.go \
 ./pkg/grpc/grpc.go \
 ./pkg/grpc/stream.go \
-./pkg/grpc/client.go \
-./pkg/grpc/ds.go \
+./pkg/grpc/rt.go \
+./pkg/grpc/auth.go \
 ./pkg/grpc/packet.go \
+./pkg/ipam/ipam.go \
 ./pkg/tun/tun_darwin.go \
 ./pkg/tun/tun.go \
 ./pkg/tun/tun_linux.go \
 ./pkg/log/log.go \
+./proto/stream_grpc.pb.go \
+./proto/stream.pb.go \
+./main/check.go \
+./main/main.go \
+./main/app.go \
 
