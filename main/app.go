@@ -58,8 +58,7 @@ loop:
 			break
 		}
 
-		log.Debug("receive %d", msg.Code)
-
+		//log.Debug("receive %d", msg.Code)
 		switch msg.Code {
 		case proto.Type_Deny:
 			log.Info("authority denied")

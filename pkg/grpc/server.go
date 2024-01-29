@@ -106,31 +106,30 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 	}
 	log.Debug("Stream [%v] online %p", remote, stream)
 
-	// 发路由
-	server.GatherRouteTo(stream)
-	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
-
 	log.Debug("将本Stream加入到集合 as key, stream: %p", stream)
 	addr, err := server.ipam.Alloc()
 	if err != nil {
 		log.Error("unavailable ipam alloc address: %v", err)
 		return err
 	}
-	server.rt.Add(fmt.Sprintf("%v/32", addr), stream) // 直连路由
 
-	defer func() {
-		server.cleanupStream(stream)
-		server.ipam.Release(addr)
-	}()
-
-	log.Debug("stream: %p", stream)
-	stream.Send(&proto.Message{
+	log.Debug("分配IP地址: %v/%v@%v", addr.String(), server.ipam.Mask(), server.ipam.Gateway().String())
+	_ = stream.Send(&proto.Message{
 		Code:    proto.Type_Assign,
 		Data:    []byte(fmt.Sprintf("%v/%v", addr.String(), server.ipam.Mask())),
 		Gateway: server.ipam.Gateway().String(),
 	})
 
-	log.Debug("分配IP地址: %v/%v@%v", addr.String(), server.ipam.Mask(), server.ipam.Gateway().String())
+	_ = server.rt.Add(fmt.Sprintf("%v/32", addr), stream) // 直连路由
+
+	// 发路由
+	server.GatherRouteTo(stream)
+	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
+
+	defer func() {
+		server.cleanupStream(stream)
+		server.ipam.Release(addr)
+	}()
 
 	for {
 		msg, err := stream.Recv()
