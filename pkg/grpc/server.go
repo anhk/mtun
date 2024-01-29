@@ -22,7 +22,7 @@ type Server struct {
 	proto.UnimplementedStreamServer
 
 	tun     *TunWrapper // 本地隧道
-	rt      *DataStore  // 路由
+	rt      *RouteTable // 路由
 	streams sync.Map    // 所有Streams集合
 	ipam    *ipam.IPAM
 
@@ -100,71 +100,62 @@ func (server *Server) cleanupStream(stream proto.Stream_PersistentStreamServer) 
 }
 
 func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServer) error {
-	remote, ok := server.Auth(stream)
-	if !ok {
+	if remote, ok := server.Auth(stream); !ok {
 		return fmt.Errorf("错误的认证信息")
+	} else {
+		log.Debug("Stream [%v] online %p", remote, stream)
+		defer func() { log.Info("client %v exit", remote) }()
 	}
-	log.Debug("Stream [%v] online %p", remote, stream)
 
 	log.Debug("将本Stream加入到集合 as key, stream: %p", stream)
-	addr, err := server.ipam.Alloc()
-	if err != nil {
+	if addr, err := server.ipam.Alloc(); err != nil {
 		log.Error("unavailable ipam alloc address: %v", err)
 		return err
+	} else {
+		defer func() { server.ipam.Release(addr) }()
+		log.Debug("分配IP地址: %v/%v@%v", addr.String(), server.ipam.Mask(), server.ipam.Gateway().String())
+		_ = stream.Send(&proto.Message{
+			Code:    proto.Type_Assign,
+			Data:    []byte(fmt.Sprintf("%v/%v", addr.String(), server.ipam.Mask())),
+			Gateway: server.ipam.Gateway().String(),
+		})
+		_ = server.rt.Add(fmt.Sprintf("%v/32", addr), stream) // 直连路由
+		defer func() { _ = server.rt.Delete(fmt.Sprintf("%v/32", addr)) }()
 	}
-
-	log.Debug("分配IP地址: %v/%v@%v", addr.String(), server.ipam.Mask(), server.ipam.Gateway().String())
-	_ = stream.Send(&proto.Message{
-		Code:    proto.Type_Assign,
-		Data:    []byte(fmt.Sprintf("%v/%v", addr.String(), server.ipam.Mask())),
-		Gateway: server.ipam.Gateway().String(),
-	})
-
-	_ = server.rt.Add(fmt.Sprintf("%v/32", addr), stream) // 直连路由
 
 	// 发路由
 	server.GatherRouteTo(stream)
 	server.streams.Store(stream, []string{}) // 将本Stream加入到集合,val为路由
-
-	defer func() {
-		server.cleanupStream(stream)
-		server.ipam.Release(addr)
-	}()
+	defer func() { server.cleanupStream(stream) }()
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			log.Info("client %v exit", remote)
 			return err
 		}
 
-		log.Debug("收到消息: type: %d", msg.Code)
+		//log.Debug("收到消息: type: %d", msg.Code)
 		switch msg.Code {
 		case proto.Type_AddRoute:
-			log.Debug("这是添加路由的消息")
+			//log.Debug("这是添加路由的消息")
 			cidr := string(msg.Data)
 			cidrs, _ := server.streams.Load(stream)
 			server.streams.Store(stream, append(cidrs.([]string), cidr))
 			_ = server.rt.Add(cidr, stream)
 			server.BroadcastRouteWithoutMe(stream, msg)
 		case proto.Type_Data:
-			// TODO: 解包
-			log.Debug("这里数据包的Payload")
+			//log.Debug("这里数据包的Payload")
 			hdr, err := ParseIpv4Hdr(msg.Data)
 			if err != nil { // invalid packet
-				log.Debug("解IPv4头失败: %v", err)
+				//log.Debug("解IPv4头失败: %v", err)
 				continue
 			}
+			//log.Debug("packet from %v to %v", hdr.Src.String(), hdr.Dst.String())
 
-			log.Debug("packet from %v to %v", hdr.Src.String(), hdr.Dst.String())
-
-			// TODO: 路由
+			// 查路由
 			if st, ok := server.rt.Lookup(hdr.Dst); ok {
-				st.Send(msg)
+				_ = st.Send(msg)
 			}
-
-			//server.rt.Lookup()
-			//_ = server.tun.Send(msg)
 		}
 	}
 }
@@ -179,7 +170,7 @@ func StartGrpcServer(option *ServerOption, subnet string) *Server {
 	server := &Server{
 		Token: option.Token,
 		tun:   NewTunWrapper(),
-		rt:    NewDataStore(),
+		rt:    NewRouteTable(),
 	}
 	server.ipam, err = ipam.NewIPAM(subnet)
 	check(err)
