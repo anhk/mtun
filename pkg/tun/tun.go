@@ -1,10 +1,11 @@
 package tun
 
 import (
-	"github.com/anhk/mtun/pkg/log"
 	"io"
 	"net"
 	"os"
+
+	"github.com/anhk/mtun/pkg/log"
 )
 
 type Interface interface {
@@ -51,7 +52,11 @@ func (tun *Tun) AddRoute(cidr string) error {
 		log.Error("invalid route: %v", cidr)
 		return err
 	}
-	return tun.addRoute(cidr)
+	if err := tun.addRoute(cidr); err != nil {
+		log.Error("设置路由 %v 失败: %v", cidr, err)
+		return err
+	}
+	return nil
 }
 
 func (tun *Tun) DelRoute(cidr string) error {

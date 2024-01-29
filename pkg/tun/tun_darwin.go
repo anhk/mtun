@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"syscall"
 	"unsafe"
+
+	"github.com/anhk/mtun/pkg/log"
 )
 
 const (
@@ -74,19 +76,20 @@ func allocTun() *Tun {
 		check(fmt.Errorf("error in syscall.Syscall6(syscall.SYS_GETSOCKOPT, ...): %v", errno))
 	}
 
-	return (&Tun{
+	return &Tun{
 		fp:   &Wrapper{os.NewFile(uintptr(nfd), "/dev/net/tun")},
 		Name: string(ifName.name[:ifNameSize-1]),
-	}).up()
+	}
 }
 
-func (tun *Tun) up() *Tun {
-	_ = exec.Command("ip", "link", "set", tun.Name, "up").Run()
-	return tun
-}
+//func (tun *Tun) up() *Tun {
+//	_ = exec.Command("ip", "link", "set", tun.Name, "up").Run()
+//	return tun
+//}
 
 func (tun *Tun) addRoute(cidr string) error {
-	return exec.Command("ip", "route", "add", cidr, "dev", tun.Name).Run()
+	//return exec.Command("ip", "route", "add", cidr, "dev", tun.Name).Run()
+	return exec.Command("route", "add", cidr, "-interface", tun.Name).Run()
 }
 
 func (tun *Tun) delRoute(cidr string) error {
@@ -94,13 +97,18 @@ func (tun *Tun) delRoute(cidr string) error {
 }
 
 func (tun *Tun) setAddress(addr, remote string) error {
-
+	log.Info("设置tun网卡地址: %v - %v", addr, remote)
 	// 设置IP地址
 	if err := exec.Command("ifconfig", tun.Name, addr, remote, "up").Run(); err != nil {
+		log.Error("设置网卡地址失败: %v", err)
 		return err
 	}
 	// 设置直连路由
-	return tun.addRoute(addr)
+	if err := tun.addRoute(addr); err != nil {
+		log.Error("设置直连路由失败: %v", err)
+		return err
+	}
+	return nil
 }
 
 func (tun *Tun) setSNAT(_ *net.IPNet) error {
