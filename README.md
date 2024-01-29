@@ -12,4 +12,5 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```bash
 ip
 ifconfig
+iptables
 ```
