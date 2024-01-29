@@ -62,12 +62,6 @@ func (tun *Tun) DelRoute(cidr string) error {
 	return tun.delRoute(cidr)
 }
 
-func (tun *Tun) setSNAT(ipNet *net.IPNet) error {
-	//exec.Command("iptables", "-t", "nat", "-D", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
-	//return exec.Command("iptables", "-t", "nat", "-I", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
-	return nil
-}
-
 func (tun *Tun) Read() ([]byte, error) {
 	return tun.fp.Read()
 }

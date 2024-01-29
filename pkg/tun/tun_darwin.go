@@ -2,6 +2,7 @@ package tun
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"syscall"
@@ -80,7 +81,7 @@ func allocTun() *Tun {
 }
 
 func (tun *Tun) up() *Tun {
-	exec.Command("ip", "link", "set", tun.Name, "up").Run()
+	_ = exec.Command("ip", "link", "set", tun.Name, "up").Run()
 	return tun
 }
 
@@ -94,6 +95,12 @@ func (tun *Tun) delRoute(cidr string) error {
 
 func (tun *Tun) setAddress(addr, remote string) error {
 	return exec.Command("ifconfig", tun.Name, addr, remote, "up").Run()
+}
+
+func (tun *Tun) setSNAT(_ *net.IPNet) error {
+	//exec.Command("iptables", "-t", "nat", "-D", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
+	//return exec.Command("iptables", "-t", "nat", "-I", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
+	return nil
 }
 
 func (tun *Wrapper) Read() ([]byte, error) {

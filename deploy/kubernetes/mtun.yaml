@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mtun
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mtun
+  template:
+    metadata:
+      name: mtun
+      labels:
+        app: mtun
+    spec:
+      containers:
+        - name: ir0cn/mtun
+          image: Image
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+      
