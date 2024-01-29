@@ -13,9 +13,24 @@ spec:
       labels:
         app: mtun
     spec:
-      containers:
-        - name: ir0cn/mtun
-          image: Image
-          imagePullPolicy: IfNotPresent
+      hostNetwork: true
       restartPolicy: Always
-      
+      containers:
+      - name: ir0cn/mtun:latest
+        image: Image
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        command:
+        - "/usr/bin/mtun"
+        - "server"
+        - "-t"
+        - "JMvKIpGEMgqUOkdQp3uQgb0bIW9SSzTF"
+        volumeMounts:
+        - name: tunnel
+          mountPath: /dev/net/tun
+          subPath: tun
+      volumes:
+      - name: tunnel
+        hostPath:
+          path: /dev/net/tun
