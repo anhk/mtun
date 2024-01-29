@@ -31,7 +31,7 @@ func NewIPAM(cidr string) (*IPAM, error) {
 }
 
 func (ipam *IPAM) Alloc() (net.IP, error) {
-	for i := uint32(2); i < ipam.max; i++ {
+	for i := uint32(1); i < ipam.max; i++ {
 		if ok := ipam.m.CheckedAdd(i); ok {
 			addr := net.IP(big.NewInt(0).Add(ipam.base, big.NewInt(int64(i))).Bytes())
 			log.Info("分配IP地址: %v", addr.String())
