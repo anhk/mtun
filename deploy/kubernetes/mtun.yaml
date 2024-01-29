@@ -16,8 +16,8 @@ spec:
       hostNetwork: true
       restartPolicy: Always
       containers:
-      - name: ir0cn/mtun:latest
-        image: Image
+      - name: mtun
+        image: ir0cn/mtun:latest
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
