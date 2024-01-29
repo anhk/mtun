@@ -1,11 +1,10 @@
 package tun
 
 import (
+	"github.com/anhk/mtun/pkg/log"
 	"io"
 	"net"
 	"os"
-
-	"github.com/anhk/mtun/pkg/log"
 )
 
 type Interface interface {
@@ -61,6 +60,12 @@ func (tun *Tun) DelRoute(cidr string) error {
 		return err
 	}
 	return tun.delRoute(cidr)
+}
+
+func (tun *Tun) setSNAT(ipNet *net.IPNet) error {
+	//exec.Command("iptables", "-t", "nat", "-D", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
+	//return exec.Command("iptables", "-t", "nat", "-I", "POSTROUTING", "-s", ipNet.String(), "-j", "MASQUERADE").Run()
+	return nil
 }
 
 func (tun *Tun) Read() ([]byte, error) {
