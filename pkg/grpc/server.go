@@ -134,26 +134,19 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 			return err
 		}
 
-		//log.Debug("收到消息: type: %d", msg.Code)
 		switch msg.Code {
 		case proto.Type_AddRoute:
-			//log.Debug("这是添加路由的消息")
 			cidr := string(msg.Data)
 			cidrs, _ := server.streams.Load(stream)
 			server.streams.Store(stream, append(cidrs.([]string), cidr))
 			_ = server.rt.Add(cidr, stream)
 			server.BroadcastRouteWithoutMe(stream, msg)
 		case proto.Type_Data:
-			//log.Debug("这里数据包的Payload")
 			hdr, err := ParseIpv4Hdr(msg.Data)
 			if err != nil { // invalid packet
-				//log.Debug("解IPv4头失败: %v", err)
 				continue
 			}
-			//log.Debug("packet from %v to %v", hdr.Src.String(), hdr.Dst.String())
-
-			// 查路由
-			if st, ok := server.rt.Lookup(hdr.Dst); ok {
+			if st, ok := server.rt.Lookup(hdr.Dst); ok { // 查路由
 				_ = st.Send(msg)
 			}
 		}
