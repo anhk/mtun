@@ -93,7 +93,7 @@ func (tun *Tun) addRoute(cidr string) error {
 }
 
 func (tun *Tun) delRoute(cidr string) error {
-	return exec.Command("ip", "route", "del", cidr, "dev", tun.Name).Run()
+	return exec.Command("route", "delete", cidr, "-interface", tun.Name).Run()
 }
 
 func (tun *Tun) setAddress(addr, remote string) error {
