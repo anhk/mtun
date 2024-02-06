@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/anhk/mtun/pkg/gate"
 	"github.com/anhk/mtun/pkg/grpc"
 	"github.com/anhk/mtun/pkg/log"
 	"github.com/spf13/cobra"
@@ -28,7 +29,8 @@ var serverCmd = cobra.Command{
 	Aliases: []string{"srv", "s"},
 	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
-		app.StartTunnel().RunAsServer(&serverOpt)
+		gate := gate.NewGate(&gate.Option{Name: "mtun", UdpPorts: []uint16{serverOpt.BindPort}})
+		app.Gate(gate.Init()).StartTunnel().RunAsServer(&serverOpt)
 	},
 }
 
