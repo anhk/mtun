@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/anhk/mtun/pkg/gate"
 	"github.com/anhk/mtun/pkg/grpc"
 	"github.com/anhk/mtun/pkg/log"
 	"github.com/anhk/mtun/pkg/tun"
@@ -11,14 +10,8 @@ import (
 type App struct {
 	tun    *tun.Tun
 	sock   grpc.Socket
-	gate   *gate.Gate
 	Cidrs  []string
 	Subnet string // 22.22.22.0/24
-}
-
-func (app *App) Gate(gate *gate.Gate) *App {
-	app.gate = gate
-	return app
 }
 
 func (app *App) run() {

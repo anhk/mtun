@@ -29,8 +29,8 @@ var serverCmd = cobra.Command{
 	Aliases: []string{"srv", "s"},
 	PreRun:  checkIsRoot,
 	Run: func(cmd *cobra.Command, args []string) {
-		gate := gate.NewGate(&gate.Option{Name: "mtun", UdpPorts: []uint16{serverOpt.BindPort}})
-		app.Gate(gate.Init()).StartTunnel().RunAsServer(&serverOpt)
+		serverOpt.GateImpl = gate.NewGate(&gate.Option{Name: "mtun", UdpPorts: []uint16{serverOpt.BindPort}}).Init()
+		app.StartTunnel().RunAsServer(&serverOpt)
 	},
 }
 

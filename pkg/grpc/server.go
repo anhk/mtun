@@ -13,9 +13,20 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
+type GateInf interface {
+	Add(net.IP) error
+	Delete(net.IP) error
+}
+
+type FakeGate struct{}
+
+func (fake *FakeGate) Add(net.IP) error    { return nil }
+func (fake *FakeGate) Delete(net.IP) error { return nil }
+
 type ServerOption struct {
 	Token    string // token to authenticate
 	BindPort uint16
+	GateImpl GateInf
 }
 
 type Server struct {
@@ -26,7 +37,8 @@ type Server struct {
 	streams sync.Map    // 所有Streams集合
 	ipam    *ipam.IPAM
 
-	Token string
+	Token    string
+	GateImpl GateInf
 }
 
 func (server *Server) getToken(stream proto.Stream_PersistentStreamServer) *TokenAuth {
@@ -38,18 +50,18 @@ func (server *Server) getToken(stream proto.Stream_PersistentStreamServer) *Toke
 	}
 }
 
-func (server *Server) getRemoteAddr(stream proto.Stream_PersistentStreamServer) string {
+func (server *Server) getRemoteAddr(stream proto.Stream_PersistentStreamServer) net.IP {
 	if p, ok := peer.FromContext(stream.Context()); ok {
 		if tcpAddr, ok := p.Addr.(*net.TCPAddr); ok {
-			return tcpAddr.IP.String()
+			return tcpAddr.IP
 		}
 	}
-	return ""
+	return nil
 }
 
-func (server *Server) Auth(stream proto.Stream_PersistentStreamServer) (string, bool) {
+func (server *Server) Auth(stream proto.Stream_PersistentStreamServer) (net.IP, bool) {
 	if _, ok := stream.(*TunWrapper); ok { // TunWrapper，不用进行鉴权
-		return "", true
+		return nil, true
 	}
 	remote := server.getRemoteAddr(stream)
 	log.Info("new stream from %v", remote)
@@ -104,7 +116,9 @@ func (server *Server) PersistentStream(stream proto.Stream_PersistentStreamServe
 		return fmt.Errorf("错误的认证信息")
 	} else {
 		log.Debug("Stream [%v] online %p", remote, stream)
+		server.GateImpl.Add(remote)
 		defer func() { log.Info("client %v exit", remote) }()
+		defer func() { server.GateImpl.Delete(remote) }()
 	}
 
 	log.Debug("将本Stream加入到集合 as key, stream: %p", stream)
@@ -160,10 +174,13 @@ func StartGrpcServer(option *ServerOption, subnet string) *Server {
 	listen, err := net.Listen("tcp", bindAddr)
 	check(err)
 
+	option.GateImpl = If[GateInf](option.GateImpl == nil, &FakeGate{}, option.GateImpl)
+
 	server := &Server{
-		Token: option.Token,
-		tun:   NewTunWrapper(),
-		rt:    NewRouteTable(),
+		Token:    option.Token,
+		GateImpl: option.GateImpl,
+		tun:      NewTunWrapper(),
+		rt:       NewRouteTable(),
 	}
 	server.ipam, err = ipam.NewIPAM(subnet)
 	check(err)
@@ -208,4 +225,12 @@ func (tun *TunWrapper) Send(msg *proto.Message) error {
 // Recv 从隧道读数据，由外部APP调用
 func (tun *TunWrapper) Recv() (*proto.Message, error) {
 	return <-tun.rx, nil
+}
+
+// Helper
+func If[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+	return b
 }
